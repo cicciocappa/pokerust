@@ -1,7 +1,10 @@
+use pokerust::poker::Player;
+
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
+
 
 
 #[derive(PartialEq, Eq)]
@@ -15,21 +18,21 @@ enum Receiver {
     Only,
 }
 
-struct Player {
-    address: std::net::SocketAddr,
-    name: String,
-    money: u32,
-}
+// struct Player {
+//     address: std::net::SocketAddr,
+//     name: String,
+//     money: u32,
+// }
 
-impl Player {
-    pub fn new(address: std::net::SocketAddr, name: String) -> Self {
-        Player {
-            address,
-            name,
-            money: 100,
-        }
-    }
-}
+// impl Player {
+//     pub fn new(address: std::net::SocketAddr, name: String) -> Self {
+//         Player {
+//             address,
+//             name,
+//             money: 100,
+//         }
+//     }
+// }
 
 struct Game {
     players: Vec<Player>,
@@ -59,6 +62,7 @@ impl Game {
 
 #[tokio::main]
 async fn main() {
+    println!("Starting server...");
     // Bind the listener to the address
     let listener = TcpListener::bind("127.0.0.1:7777").await.unwrap();
     let (tx, mut _rx) = broadcast::channel(16);
