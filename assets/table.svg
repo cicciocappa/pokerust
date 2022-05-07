@@ -1,26 +1,35 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
 <svg
    width="1280"
    height="768"
-   xml:space="preserve"
+   viewBox="0 0 338.66666 203.19999"
    version="1.1"
-   id="svg1163"
+   id="svg5"
    xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg"><defs
-   id="defs1167" />
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2" />
   <g
-   id="Table">
-  <path
-   d="M 256 0 H 1024 C 1364 0, 1364 768, 1024 768 H 256 C -84 768, -84 0, 256 0"
-   fill="#333333"
-   stroke="#000000"
-   id="path1158"
-   style="fill:#502d16" />
-  <path
-   d="m 335.85602,71.96667 h 615.94376 c 327.22012,0 327.22012,622.46015 0,622.46015 H 335.85602 c -327.2201343,0 -327.2201343,-622.46015 0,-622.46015"
-   fill="#335533"
-   stroke="#000000"
-   id="path1160"
-   style="stroke-width:0.96749;fill:#008000" />
- </g>
+     id="layer1">
+    <rect
+       style="fill:#552200;fill-rule:evenodd;stroke-width:0.273261"
+       id="rect362"
+       width="317.5"
+       height="203.2"
+       x="10.583333"
+       y="0"
+       rx="52.916664"
+       ry="56.444439" />
+    <rect
+       style="fill:#008000;fill-rule:evenodd;stroke-width:0.226361"
+       id="rect727"
+       width="269.875"
+       height="164.04166"
+       x="34.395832"
+       y="19.57917"
+       rx="44.97916"
+       ry="45.567127" />
+  </g>
 </svg>

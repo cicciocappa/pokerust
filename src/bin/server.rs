@@ -1,11 +1,9 @@
-use pokerust::poker::Player;
+use pokerust::poker::{Player, Command, Operation};
 
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
-
-
 
 #[derive(PartialEq, Eq)]
 enum State {
@@ -37,7 +35,7 @@ enum Receiver {
 struct Game {
     players: Vec<Player>,
     state: State,
-    test: i32,
+   
 }
 
 impl Game {
@@ -45,19 +43,11 @@ impl Game {
         Game {
             players: Vec::new(),
             state: State::WaitingPlayers,
-            test: 0,
+           
         }
     }
 
-    fn get_list(&self)->String {
-        let mut s = String::from("table:");
-        for p in &self.players {
-            s.push_str(&p.name);
-            s.push('|');
-        }
-        s.push('\n');
-        s
-    }
+   
 }
 
 #[tokio::main]
@@ -87,25 +77,38 @@ async fn main() {
                             tx.send(("bye".to_string(),addr,Receiver::AllBut)).unwrap();
                             break;
                         }
+                        /*
                         let (cmd, op) = match line.find(':') {
                             None => continue,
                             Some(idx) => (&line[..idx], line[idx + 1..].trim()),
                         };
-                        match cmd {
-                            "join"=>{
-                                println!("process join {}",op);
+                        */
+                        let cmd:Command = serde_json::from_str(&line).unwrap();
+                        match cmd.op {
+                            Operation::Join =>{
+                                println!("process join {}",cmd.para);
                                 let mut tgame = game.lock().unwrap();
                                 if tgame.players.len()<8 && tgame.state == State::WaitingPlayers {
-                                    let p = Player::new(addr,op.to_string());
+                                    let p = Player::new(addr,cmd.para);
+                                    //let cmd = Command::new(Operation::Join, serde_json::to_string(&p).unwrap());
+                                    //let mut msg = serde_json::to_string(&cmd).unwrap();
+                                    //msg.push('\n');
+                                    let msg = prepare(Operation::Join, serde_json::to_string(&p).unwrap());
+                                    tx.send((msg,addr,Receiver::AllBut)).unwrap();
                                     tgame.players.push(p);
-                                    tx.send((tgame.get_list(),addr,Receiver::Only)).unwrap();
-                                    tx.send((format!("join:{op}\n").to_string(),addr,Receiver::AllBut)).unwrap();
+                                    //let cmd = Command::new(Operation::List,serde_json::to_string(&tgame.players).unwrap());
+                                    //let mut msg = serde_json::to_string(&cmd).unwrap();
+                                    //msg.push('\n');
+                                    let msg = prepare(Operation::List, serde_json::to_string(&tgame.players).unwrap());
+                                    tx.send((msg,addr,Receiver::Only)).unwrap();
+
+                                    
                                 } else {
                                     tx.send(("full\n".to_string(),addr,Receiver::Only)).unwrap();
                                 }
                             },
-                            "start"=>{
-                                println!("process start {}",op);
+                            Operation::Start =>{
+                                println!("process start {}",cmd.para);
                             }
                             _=>{
                                 println!("invalid command");
@@ -125,4 +128,11 @@ async fn main() {
             }
         });
     }
+}
+
+fn prepare(op:Operation, para:String)->String {
+    let cmd = Command::new(op,para);
+    let mut msg = serde_json::to_string(&cmd).unwrap();
+    msg.push('\n');
+    msg
 }
