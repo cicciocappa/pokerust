@@ -3,12 +3,15 @@
 // sit: si siede al tavolo
 
 
-use pokerust::poker::{Player, Command, Operation};
+use pokerust::poker::{Player, Command, Operation, prepare};
 
 use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
+
 
 #[derive(PartialEq, Eq)]
 enum State {
@@ -40,6 +43,7 @@ enum Receiver {
 struct Game {
     players: Vec<Option<Player>>,
     state: State,
+    names: HashMap<std::net::SocketAddr, String>,
    
 }
 
@@ -48,7 +52,7 @@ impl Game {
         Game {
             players: vec![None,None,None,None,None,None,None,None],
             state: State::WaitingPlayers,
-           
+            names: HashMap::new(), 
         }
     }
 
@@ -69,8 +73,11 @@ async fn main() {
         let mut rx = tx.subscribe();
         let game = Arc::clone(&game);
         tokio::spawn(async move {
-            println!("spawning connection...");
+           
+            let peer = socket.peer_addr().unwrap();
+            println!("spawning connection... {:?}",socket.peer_addr());
             let (reader, mut writer) = socket.split();
+            
             let mut reader = BufReader::new(reader);
             let mut line = String::new();
 
@@ -79,8 +86,8 @@ async fn main() {
                     result = reader.read_line(&mut line) => {
                         if result.unwrap() == 0 {
                             print!("client disconnected");
-                            let mut tgame = game.lock().unwrap();
-                            tgame.players.remove(0);
+                            //let mut tgame = game.lock().unwrap();
+                            //tgame.players.remove(0);
                             tx.send(("bye".to_string(),addr,Receiver::AllBut)).unwrap();
                             break;
                         }
@@ -90,18 +97,22 @@ async fn main() {
                             Some(idx) => (&line[..idx], line[idx + 1..].trim()),
                         };
                         */
+                        println!("{line}");
                         let cmd:Command = serde_json::from_str(&line).unwrap();
                         match cmd.op {
                             Operation::Enter =>{
                                 println!("process enter {}",cmd.para);
                                 let tgame = game.lock().unwrap();
-                                if tgame.players.len()<8 && tgame.state == State::WaitingPlayers {
+                                let free = tgame.players.iter().any(|x| x.is_none());
+                                if free && tgame.state == State::WaitingPlayers {
+                                    tgame.names.insert(peer,cmd.para);
                                     let msg = prepare(Operation::List, serde_json::to_string(&tgame.players).unwrap());
                                     tx.send((msg,addr,Receiver::Only)).unwrap();
 
                                     
                                 } else {
-                                    tx.send(("full\n".to_string(),addr,Receiver::Only)).unwrap();
+                                    let msg = prepare(Operation::Full, String::new());
+                                    tx.send((msg,addr,Receiver::Only)).unwrap();
                                 }
                             },
                             Operation::Sit => {
@@ -143,9 +154,3 @@ async fn main() {
     }
 }
 
-fn prepare(op:Operation, para:String)->String {
-    let cmd = Command::new(op,para);
-    let mut msg = serde_json::to_string(&cmd).unwrap();
-    msg.push('\n');
-    msg
-}

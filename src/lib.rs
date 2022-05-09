@@ -1,40 +1,36 @@
 pub mod poker {
     use rand::seq::SliceRandom;
     use rand::thread_rng;
+    use serde::{Deserialize, Serialize};
     use std::fmt;
-    use serde::{Deserialize,Serialize};
 
     use Seed::*;
 
-    #[derive(Serialize,Deserialize,Debug)]
+    #[derive(Serialize, Deserialize, Debug)]
     pub enum Operation {
         Enter,
         Sit,
         Start,
         List,
+        Full,
     }
 
-    #[derive(Serialize,Deserialize,Debug)]
+    #[derive(Serialize, Deserialize, Debug)]
     pub struct Command {
-        pub op:Operation,
-        pub para:String,
+        pub op: Operation,
+        pub para: String,
     }
 
     impl Command {
-        pub fn new(op:Operation,para:String)->Self {
-            Command {
-                op,
-                para,
-            }
+        pub fn new(op: Operation, para: String) -> Self {
+            Command { op, para }
         }
     }
-    #[derive(Serialize,Deserialize,Debug)]
+    #[derive(Serialize, Deserialize, Debug)]
     pub struct Player {
         pub name: String,
         pub money: u32,
-        
         address: std::net::SocketAddr,
-       
     }
 
     impl Player {
@@ -43,7 +39,6 @@ pub mod poker {
                 address,
                 name,
                 money: 100,
-               
             }
         }
     }
@@ -148,5 +143,12 @@ pub mod poker {
             self.position += 1;
             Some(result)
         }
+    }
+
+    pub fn prepare(op: Operation, para: String) -> String {
+        let cmd = Command::new(op, para);
+        let mut msg = serde_json::to_string(&cmd).unwrap();
+        msg.push('\n');
+        msg
     }
 }
