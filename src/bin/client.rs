@@ -21,8 +21,9 @@ use std::thread;
 enum Message {
     OpenJoinDialog,
     CloseJoinDialog,
-    TryJoin,
-    JoinOk,
+    TryEnter,
+    EnterOk,
+    Sit,
     GotList,
     NewPlayer,
 }
@@ -34,7 +35,7 @@ enum State {
 }
 
 struct GameInfo {
-    players: Vec<Player>,
+    players: Vec<Option<Player>>,
     self_position: usize,
 }
 
@@ -83,7 +84,7 @@ impl PokerClient {
             gp0.end();
             gp0.set_frame(FrameType::EmbossedBox);
             gp0.set_color(Color::Black);
-            gp0.hide();
+            
             player_labels.push(gp0);
         }
         main_win.end();
@@ -124,7 +125,7 @@ impl PokerClient {
         join_win.make_modal(true);
 
         join_btn.emit(s, Message::OpenJoinDialog);
-        join_ok.emit(s, Message::TryJoin);
+        join_ok.emit(s, Message::TryEnter);
         join_cancel.emit(s, Message::CloseJoinDialog);
 
         PokerClient {
@@ -161,8 +162,8 @@ impl PokerClient {
                         println!("io sono in posizione {}",game_info.self_position);
                         for i in 0..game_info.players.len(){
                             self.player_labels[i].show();
-                            self.player_labels[i].child(0).unwrap().set_label(&game_info.players[i].name);
-                            let mut s = game_info.players[i].money.to_string();
+                            self.player_labels[i].child(0).unwrap().set_label(&game_info.players[i].unwrap().name);
+                            let mut s = game_info.players[i].unwrap().money.to_string();
                             s.push('$');
                             self.player_labels[i].child(1).unwrap().set_label(&s);
                         }
@@ -182,7 +183,7 @@ impl PokerClient {
                     Message::CloseJoinDialog => {
                         self.join_win.hide();
                     }
-                    Message::TryJoin => {
+                    Message::TryEnter => {
                         self.join_ok.deactivate();
                         let server = if self.server_input.value().len() > 2 {
                             self.server_input.value()
@@ -204,7 +205,7 @@ impl PokerClient {
                             if stream.is_ok() {
                                 let mut stream = stream.unwrap();
                                 //self.join_info.set_label("Connessione ok");
-                                let cmd = Command::new(Operation::Join, name);
+                                let cmd = Command::new(Operation::Enter, name);
                                 let mut msg = serde_json::to_string(&cmd).unwrap();
                                 msg.push('\n');
                                 stream.write(&msg.into_bytes()).unwrap();
@@ -227,7 +228,7 @@ impl PokerClient {
 
                         // controllare la lunghezza massima di name;
                     }
-                    Message::JoinOk => {
+                    Message::EnterOk => {
                         println!("join ok");
                     }
                 }
@@ -260,13 +261,13 @@ fn reader(s: app::Sender<Message>, mut reader: TcpStream, game_info: Arc<Mutex<G
             let cmd: Command = serde_json::from_str(&line).unwrap();
 
             match cmd.op {
-                Operation::Join => {
+                Operation::Sit => {
                     let p: Player = serde_json::from_str(&cmd.para).unwrap();
                     println!("aggiungo {}", p.name);
                     s.send(Message::NewPlayer);
                 }
                 Operation::List => {
-                    let presenti: Vec<Player> = serde_json::from_str(&cmd.para).unwrap();
+                    let presenti: Vec<Option<Player>> = serde_json::from_str(&cmd.para).unwrap();
                     let mut tgame = game_info.lock().unwrap();
                     tgame.self_position = presenti.len() - 1;
                     tgame.players = presenti;

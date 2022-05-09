@@ -8,7 +8,8 @@ pub mod poker {
 
     #[derive(Serialize,Deserialize,Debug)]
     pub enum Operation {
-        Join,
+        Enter,
+        Sit,
         Start,
         List,
     }

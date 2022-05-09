@@ -1,3 +1,8 @@
+// altra logica:
+// enter: connessione al server
+// sit: si siede al tavolo
+
+
 use pokerust::poker::{Player, Command, Operation};
 
 use std::sync::{Arc, Mutex};
@@ -33,7 +38,7 @@ enum Receiver {
 // }
 
 struct Game {
-    players: Vec<Player>,
+    players: Vec<Option<Player>>,
     state: State,
    
 }
@@ -41,7 +46,7 @@ struct Game {
 impl Game {
     fn new() -> Self {
         Game {
-            players: Vec::new(),
+            players: vec![None,None,None,None,None,None,None,None],
             state: State::WaitingPlayers,
            
         }
@@ -74,6 +79,8 @@ async fn main() {
                     result = reader.read_line(&mut line) => {
                         if result.unwrap() == 0 {
                             print!("client disconnected");
+                            let mut tgame = game.lock().unwrap();
+                            tgame.players.remove(0);
                             tx.send(("bye".to_string(),addr,Receiver::AllBut)).unwrap();
                             break;
                         }
@@ -85,20 +92,10 @@ async fn main() {
                         */
                         let cmd:Command = serde_json::from_str(&line).unwrap();
                         match cmd.op {
-                            Operation::Join =>{
-                                println!("process join {}",cmd.para);
-                                let mut tgame = game.lock().unwrap();
+                            Operation::Enter =>{
+                                println!("process enter {}",cmd.para);
+                                let tgame = game.lock().unwrap();
                                 if tgame.players.len()<8 && tgame.state == State::WaitingPlayers {
-                                    let p = Player::new(addr,cmd.para);
-                                    //let cmd = Command::new(Operation::Join, serde_json::to_string(&p).unwrap());
-                                    //let mut msg = serde_json::to_string(&cmd).unwrap();
-                                    //msg.push('\n');
-                                    let msg = prepare(Operation::Join, serde_json::to_string(&p).unwrap());
-                                    tx.send((msg,addr,Receiver::AllBut)).unwrap();
-                                    tgame.players.push(p);
-                                    //let cmd = Command::new(Operation::List,serde_json::to_string(&tgame.players).unwrap());
-                                    //let mut msg = serde_json::to_string(&cmd).unwrap();
-                                    //msg.push('\n');
                                     let msg = prepare(Operation::List, serde_json::to_string(&tgame.players).unwrap());
                                     tx.send((msg,addr,Receiver::Only)).unwrap();
 
@@ -107,6 +104,22 @@ async fn main() {
                                     tx.send(("full\n".to_string(),addr,Receiver::Only)).unwrap();
                                 }
                             },
+                            Operation::Sit => {
+                                let mut tgame = game.lock().unwrap();
+                                let p = Player::new(addr,cmd.para);
+                                //let cmd = Command::new(Operation::Join, serde_json::to_string(&p).unwrap());
+                                //let mut msg = serde_json::to_string(&cmd).unwrap();
+                                //msg.push('\n');
+                                let msg = prepare(Operation::Sit, serde_json::to_string(&p).unwrap());
+                                tx.send((msg,addr,Receiver::AllBut)).unwrap();
+                                let pos = 0;
+                                tgame.players[pos]=Some(p);
+                                //let cmd = Command::new(Operation::List,serde_json::to_string(&tgame.players).unwrap());
+                                //let mut msg = serde_json::to_string(&cmd).unwrap();
+                                //msg.push('\n');
+                           
+
+                            }
                             Operation::Start =>{
                                 println!("process start {}",cmd.para);
                             }
