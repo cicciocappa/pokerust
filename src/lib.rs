@@ -13,6 +13,7 @@ pub mod poker {
         Start,
         List,
         Full,
+        Leave,
     }
 
     #[derive(Serialize, Deserialize, Debug)]

@@ -2,16 +2,14 @@
 // enter: connessione al server
 // sit: si siede al tavolo
 
+use pokerust::poker::{prepare, Command, NewPlayerInfo, Operation, Player};
 
-use pokerust::poker::{Player, Command, Operation, prepare, NewPlayerInfo};
-
-use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
-
 
 #[derive(PartialEq, Eq)]
 enum State {
@@ -44,19 +42,16 @@ struct Game {
     players: Vec<Option<Player>>,
     state: State,
     names: HashMap<std::net::SocketAddr, String>,
-   
 }
 
 impl Game {
     fn new() -> Self {
         Game {
-            players: vec![None,None,None,None,None,None,None,None],
+            players: vec![None, None, None, None, None, None, None, None],
             state: State::WaitingPlayers,
-            names: HashMap::new(), 
+            names: HashMap::new(),
         }
     }
-
-   
 }
 
 #[tokio::main]
@@ -73,11 +68,9 @@ async fn main() {
         let mut rx = tx.subscribe();
         let game = Arc::clone(&game);
         tokio::spawn(async move {
-           
             let peer = socket.peer_addr().unwrap();
-            println!("spawning connection... {:?}",socket.peer_addr());
+            println!("spawning connection... {:?}", socket.peer_addr());
             let (reader, mut writer) = socket.split();
-            
             let mut reader = BufReader::new(reader);
             let mut line = String::new();
 
@@ -85,18 +78,26 @@ async fn main() {
                 tokio::select! {
                     result = reader.read_line(&mut line) => {
                         if result.unwrap() == 0 {
-                            print!("client disconnected");
-                            //let mut tgame = game.lock().unwrap();
-                            //tgame.players.remove(0);
-                            tx.send(("bye".to_string(),addr,Receiver::AllBut)).unwrap();
+                            println!("client disconnected");
+                            let mut tgame = game.lock().unwrap();
+                            let leaving = tgame.names.get(&peer).unwrap();
+                            println!("si tratta di {leaving}");
+                            let who = tgame.players.iter().position(|m|match m {
+                                None=>false,
+                                Some(n)=>&n.name==leaving,
+                            });
+                            println!("{:?}",who);
+                            if let Some(pos) = who {
+                                println!("era seduto in posizione {pos}");
+                                let msg = prepare(Operation::Leave, pos.to_string());
+                                tx.send((msg,addr,Receiver::AllBut)).unwrap();
+                                tgame.players[pos]=None;
+                                
+
+                            } 
+                            tgame.names.remove(&peer);
                             break;
                         }
-                        /*
-                        let (cmd, op) = match line.find(':') {
-                            None => continue,
-                            Some(idx) => (&line[..idx], line[idx + 1..].trim()),
-                        };
-                        */
                         println!("{line}");
                         let cmd:Command = serde_json::from_str(&line).unwrap();
                         match cmd.op {
@@ -109,15 +110,13 @@ async fn main() {
                                     let msg = prepare(Operation::List, serde_json::to_string(&tgame.players).unwrap());
                                     tx.send((msg,addr,Receiver::Only)).unwrap();
 
-                                    
                                 } else {
                                     let msg = prepare(Operation::Full, String::new());
                                     tx.send((msg,addr,Receiver::Only)).unwrap();
                                 }
                             },
                             Operation::Sit => {
-                               
-                               
+
                                 let mut tgame = game.lock().unwrap();
                                 println!("si siede {:?} nella posizione {} ",peer,cmd.para);
                                 let pos = cmd.para.parse::<usize>().unwrap();
@@ -133,12 +132,11 @@ async fn main() {
                                 };
                                 let msg = prepare(Operation::Sit, serde_json::to_string(&info).unwrap());
                                 tx.send((msg,addr,Receiver::All)).unwrap();
-                                
                                 tgame.players[pos]=Some(p);
                                 //let cmd = Command::new(Operation::List,serde_json::to_string(&tgame.players).unwrap());
                                 //let mut msg = serde_json::to_string(&cmd).unwrap();
                                 //msg.push('\n');
-                           
+
 
                             }
                             Operation::Start =>{
@@ -152,7 +150,7 @@ async fn main() {
                     }
                     result = rx.recv()=>{
                         let (msg,sender,mode) = result.unwrap();
-
+                        println!("scrivo {}",msg);
                         if (addr!=sender && mode==Receiver::AllBut) || (addr==sender && mode==Receiver::Only ) || mode==Receiver::All {
                             writer.write_all(msg.as_bytes()).await.unwrap();
                         }
@@ -163,4 +161,3 @@ async fn main() {
         });
     }
 }
-

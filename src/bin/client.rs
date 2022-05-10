@@ -22,8 +22,9 @@ enum Message {
     OpenJoinDialog,
     CloseJoinDialog,
     TryEnter,
-    EnterOk,
+    //EnterOk,
     Sit(usize),
+    Leave(usize),
     GotList,
     NewPlayer,
 }
@@ -72,7 +73,7 @@ impl PokerClient {
         app::set_visible_focus(false);
         let (s, receiver) = app::channel();
         let mut player_labels = Vec::new();
-        let mut main_win = Window::default().with_size(1280, 768).with_label("Poker");
+        let mut main_win = Window::default().with_size(1600, 800).with_label("Poker");
         let mut frame = Frame::default().with_size(1280, 768).with_pos(0, 0);
         let mut table = SvgImage::load("assets/table.svg").unwrap();
         table.scale(1280, 768, true, true);
@@ -171,7 +172,7 @@ impl PokerClient {
                     Message::GotList => {
                         let game_info = game_info.lock().unwrap();
                         println!("got players list lunga {}", game_info.players.len());
-                        println!("io sono in posizione {}", game_info.self_position);
+                        //println!("io sono in posizione {}", game_info.self_position);
                         for i in 0..8 {
                             match &game_info.players[i] {
                                 Some(p) => {
@@ -204,6 +205,11 @@ impl PokerClient {
                             .unwrap()
                             .write(&msg.into_bytes())
                             .unwrap();
+                    }
+
+                    Message::Leave(p) => {
+                        self.player_labels[p].child(0).unwrap().set_label("");
+                        self.player_labels[p].child(1).unwrap().set_label("");
                     }
 
                     Message::NewPlayer => {
@@ -272,9 +278,9 @@ impl PokerClient {
 
                         // controllare la lunghezza massima di name;
                     }
-                    Message::EnterOk => {
-                        println!("join ok");
-                    }
+                    //Message::EnterOk => {
+                    //    println!("join ok");
+                    //}
                 }
             }
         }
@@ -319,6 +325,14 @@ fn reader(s: app::Sender<Message>, mut reader: TcpStream, game_info: Arc<Mutex<G
                     tgame.players = presenti;
                     println!("tavolo: {:?}", tgame.players.len());
                     s.send(Message::GotList);
+                }
+                Operation::Leave => {
+                    let pos = cmd.para.parse::<usize>().unwrap();
+                    println!("processo addio {}",cmd.para);
+                    s.send(Message::Leave(pos));
+                    // probabilmente nel client non mi serve aggiornare la lista giocatori, mi basta cancellare le info
+                    //let mut tgame = game_info.lock().unwrap();
+
                 }
                 _ => (),
             }
