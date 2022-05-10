@@ -1,4 +1,4 @@
-use pokerust::poker::{Command, Operation, Player, prepare};
+use pokerust::poker::{prepare, Command, NewPlayerInfo, Operation, Player};
 
 use fltk::{
     app,
@@ -37,6 +37,7 @@ enum State {
 struct GameInfo {
     players: Vec<Option<Player>>,
     self_position: usize,
+    new_player: NewPlayerInfo,
 }
 
 struct PokerClient {
@@ -54,8 +55,6 @@ struct PokerClient {
     join_info: Frame,
     stream: Option<TcpStream>,
 }
-
-
 
 impl PokerClient {
     fn new() -> Self {
@@ -91,8 +90,8 @@ impl PokerClient {
             //lp0.set_color(Color::Black);
             let mut lp1 = Frame::new(POSIZIONI[i].0, POSIZIONI[i].1 + 22, 140, 24, "");
             lp1.set_label_color(Color::Yellow);
-            let mut bt0 = Button::new(POSIZIONI[i].0+50, POSIZIONI[i].1 + 12, 40, 24, "SIT");
-            bt0.set_callback(move|_|{s.send(Message::Sit(i))});
+            let mut bt0 = Button::new(POSIZIONI[i].0 + 50, POSIZIONI[i].1 + 12, 40, 24, "SIT");
+            bt0.set_callback(move |_| s.send(Message::Sit(i)));
             bt0.hide();
             gp0.end();
             gp0.set_frame(FrameType::EmbossedBox);
@@ -160,6 +159,10 @@ impl PokerClient {
         let game_info = GameInfo {
             players: Vec::new(),
             self_position: 0,
+            new_player: NewPlayerInfo {
+                position: 0,
+                name: String::new(),
+            },
         };
         let game_info = Arc::new(Mutex::new(game_info));
         while self.app.wait() {
@@ -167,7 +170,7 @@ impl PokerClient {
                 match msg {
                     Message::GotList => {
                         let game_info = game_info.lock().unwrap();
-                        println!("got players list lunga {}",game_info.players.len());
+                        println!("got players list lunga {}", game_info.players.len());
                         println!("io sono in posizione {}", game_info.self_position);
                         for i in 0..8 {
                             match &game_info.players[i] {
@@ -181,25 +184,38 @@ impl PokerClient {
                                     self.player_labels[i].child(2).unwrap().show();
                                 }
                             };
-                             
                         }
                     }
-                    Message::NewPlayer => {
-                        println!("join nuovo player");
-                    }
+                    
 
                     Message::Sit(p) => {
-                        println!("giocatore si siede {p}");
+                        println!("giocatore prova a sedersi in posizione {p}");
                         for i in 0..8 {
                             self.player_labels[i].child(2).unwrap().hide();
                         }
-                        let msg = prepare(Operation::Sit,p.to_string());
+                        let msg = prepare(Operation::Sit, p.to_string());
                         //match self.stream {
                         //    Some(ref mut s) => {s.write(&msg.into_bytes()).unwrap();}
                         //    None => {}
-                       // }
+                        // }
                         //self.stream.as_mut().write(&msg.into_bytes()).unwrap();
-                        self.stream.as_mut().unwrap().write(&msg.into_bytes()).unwrap();
+                        self.stream
+                            .as_mut()
+                            .unwrap()
+                            .write(&msg.into_bytes())
+                            .unwrap();
+                    }
+
+                    Message::NewPlayer => {
+                        let tgame = game_info.lock().unwrap();
+                        let p = tgame.new_player.position;
+                        self.player_labels[p].child(2).unwrap().hide();
+                        self.player_labels[p]
+                            .child(0)
+                            .unwrap()
+                            .set_label(&tgame.new_player.name);
+                        self.player_labels[p].child(1).unwrap().set_label("100$");
+                        // aggiorniamo anche l'elenco locale di giocatori?
                     }
 
                     Message::OpenJoinDialog => {
@@ -279,7 +295,7 @@ fn reader(s: app::Sender<Message>, mut reader: TcpStream, game_info: Arc<Mutex<G
             println!("disconnesso");
             break;
         } else {
-            println!("got: {}", line);
+            println!("from server: {}", line);
             // process line
             //let (cmd, op) = match line.find(':') {
             //    None => continue,
@@ -290,8 +306,10 @@ fn reader(s: app::Sender<Message>, mut reader: TcpStream, game_info: Arc<Mutex<G
 
             match cmd.op {
                 Operation::Sit => {
-                    let p: Player = serde_json::from_str(&cmd.para).unwrap();
-                    println!("aggiungo {}", p.name);
+                    let mut tgame = game_info.lock().unwrap();
+                    let p: NewPlayerInfo = serde_json::from_str(&cmd.para).unwrap();
+                    println!("aggiungo {} in pos {}", p.name, p.position);
+                    tgame.new_player = p;
                     s.send(Message::NewPlayer);
                 }
                 Operation::List => {

@@ -21,6 +21,12 @@ pub mod poker {
         pub para: String,
     }
 
+    #[derive(Serialize, Deserialize, Debug)]
+    pub struct NewPlayerInfo {
+        pub position: usize,
+        pub name: String,
+    }
+
     impl Command {
         pub fn new(op: Operation, para: String) -> Self {
             Command { op, para }

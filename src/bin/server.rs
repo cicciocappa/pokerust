@@ -3,7 +3,7 @@
 // sit: si siede al tavolo
 
 
-use pokerust::poker::{Player, Command, Operation, prepare};
+use pokerust::poker::{Player, Command, Operation, prepare, NewPlayerInfo};
 
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
@@ -102,7 +102,7 @@ async fn main() {
                         match cmd.op {
                             Operation::Enter =>{
                                 println!("process enter {}",cmd.para);
-                                let tgame = game.lock().unwrap();
+                                let mut tgame = game.lock().unwrap();
                                 let free = tgame.players.iter().any(|x| x.is_none());
                                 if free && tgame.state == State::WaitingPlayers {
                                     tgame.names.insert(peer,cmd.para);
@@ -116,14 +116,24 @@ async fn main() {
                                 }
                             },
                             Operation::Sit => {
+                               
+                               
                                 let mut tgame = game.lock().unwrap();
-                                let p = Player::new(addr,cmd.para);
+                                println!("si siede {:?} nella posizione {} ",peer,cmd.para);
+                                let pos = cmd.para.parse::<usize>().unwrap();
+                                println!("il cui nome è {}",tgame.names.get(&peer).unwrap());
+                                let p = Player::new(addr,tgame.names.get(&peer).unwrap().clone());
                                 //let cmd = Command::new(Operation::Join, serde_json::to_string(&p).unwrap());
                                 //let mut msg = serde_json::to_string(&cmd).unwrap();
                                 //msg.push('\n');
-                                let msg = prepare(Operation::Sit, serde_json::to_string(&p).unwrap());
-                                tx.send((msg,addr,Receiver::AllBut)).unwrap();
-                                let pos = 0;
+                                let info = NewPlayerInfo {
+                                    position:pos,
+                                    name: tgame.names.get(&peer).unwrap().clone(),
+
+                                };
+                                let msg = prepare(Operation::Sit, serde_json::to_string(&info).unwrap());
+                                tx.send((msg,addr,Receiver::All)).unwrap();
+                                
                                 tgame.players[pos]=Some(p);
                                 //let cmd = Command::new(Operation::List,serde_json::to_string(&tgame.players).unwrap());
                                 //let mut msg = serde_json::to_string(&cmd).unwrap();
@@ -143,7 +153,7 @@ async fn main() {
                     result = rx.recv()=>{
                         let (msg,sender,mode) = result.unwrap();
 
-                        if (addr!=sender && mode==Receiver::AllBut) || (addr==sender && mode==Receiver::Only ) {
+                        if (addr!=sender && mode==Receiver::AllBut) || (addr==sender && mode==Receiver::Only ) || mode==Receiver::All {
                             writer.write_all(msg.as_bytes()).await.unwrap();
                         }
                     }
