@@ -1,3 +1,5 @@
+mod ui;
+
 use pokerust::poker::{prepare, Command, NewPlayerInfo, Operation, Player};
 
 use fltk::{
@@ -40,8 +42,7 @@ struct GameInfo {
     self_position: usize,
     new_player: NewPlayerInfo,
 }
-
-struct PokerClient {
+pub struct PokerClient {
     app: app::App,
     main_win: Window,
     player_labels: Vec<Group>,
@@ -59,101 +60,8 @@ struct PokerClient {
 
 impl PokerClient {
     fn new() -> Self {
-        const POSIZIONI: [(i32, i32); 8] = [
-            (570, 710),
-            (1000, 700),
-            (1140, 360),
-            (1000, 20),
-            (570, 10),
-            (140, 20),
-            (0, 360),
-            (140, 700),
-        ];
-        let app = app::App::default();
-        app::set_visible_focus(false);
-        let (s, receiver) = app::channel();
-        let mut player_labels = Vec::new();
-        let mut main_win = Window::default().with_size(1600, 800).with_label("Poker");
-        let mut frame = Frame::default().with_size(1280, 768).with_pos(0, 0);
-        let mut table = SvgImage::load("assets/table.svg").unwrap();
-        table.scale(1280, 768, true, true);
-        frame.set_image(Some(table));
-        let mut join_btn = Button::default()
-            .with_label("JOIN")
-            .with_size(80, 80)
-            .center_of(&main_win);
-        join_btn.set_frame(FrameType::PlasticRoundDownBox);
-        for i in 0..8 {
-            let mut gp0 = Group::new(POSIZIONI[i].0, POSIZIONI[i].1, 140, 48, "");
-            let mut lp0 = Frame::new(POSIZIONI[i].0, POSIZIONI[i].1 + 2, 140, 24, "");
-            //lp0.set_frame(FrameType::FlatBox);
-            lp0.set_label_color(Color::Cyan);
-            //lp0.set_color(Color::Black);
-            let mut lp1 = Frame::new(POSIZIONI[i].0, POSIZIONI[i].1 + 22, 140, 24, "");
-            lp1.set_label_color(Color::Yellow);
-            let mut bt0 = Button::new(POSIZIONI[i].0 + 50, POSIZIONI[i].1 + 12, 40, 24, "SIT");
-            bt0.set_callback(move |_| s.send(Message::Sit(i)));
-            bt0.hide();
-            gp0.end();
-            gp0.set_frame(FrameType::EmbossedBox);
-            gp0.set_color(Color::Black);
-            player_labels.push(gp0);
-        }
-        main_win.end();
-        main_win.show();
-
-        let mut join_win = Window::default()
-            .with_size(300, 140)
-            .with_label("Join server");
-        let _f1 = Frame::default()
-            .with_label("Host:")
-            .with_size(100, 24)
-            .with_pos(10, 30);
-        let _f2 = Frame::default()
-            .with_label("Name:")
-            .with_size(100, 24)
-            .with_pos(10, 60);
-        let mut join_info = Frame::default()
-            //.with_label("Enter server and name")
-            .with_size(300, 24)
-            .with_pos(0, 0);
-        join_info.set_frame(FrameType::FlatBox);
-        join_info.set_label_color(Color::White);
-        //join_info.set_color(Color::Blue);
-        let mut name_input = input::Input::default().with_size(120, 24).with_pos(120, 60);
-        name_input.set_maximum_size(14);
-        let mut server_input = input::Input::default().with_size(120, 24).with_pos(120, 30);
-        server_input.set_maximum_size(128);
-        let mut join_ok = Button::default()
-            .with_size(80, 24)
-            .with_label("Ok")
-            .with_pos(70, 100);
-        let mut join_cancel = Button::default()
-            .with_size(80, 24)
-            .with_label("Cancel")
-            .with_pos(160, 100);
-        join_win.end();
-        join_win.make_modal(true);
-
-        join_btn.emit(s, Message::OpenJoinDialog);
-        join_ok.emit(s, Message::TryEnter);
-        join_cancel.emit(s, Message::CloseJoinDialog);
-
-        PokerClient {
-            app,
-            state: State::Disconnected,
-            main_win,
-            player_labels,
-            join_win,
-            join_btn,
-            receiver,
-            sender: s,
-            server_input,
-            name_input,
-            join_ok,
-            join_info,
-            stream: None,
-        }
+        ui::setup()
+       
     }
 
     pub fn run(mut self) {
@@ -187,7 +95,6 @@ impl PokerClient {
                             };
                         }
                     }
-                    
 
                     Message::Sit(p) => {
                         println!("giocatore prova a sedersi in posizione {p}");
@@ -277,10 +184,9 @@ impl PokerClient {
                         }
 
                         // controllare la lunghezza massima di name;
-                    }
-                    //Message::EnterOk => {
-                    //    println!("join ok");
-                    //}
+                    } //Message::EnterOk => {
+                      //    println!("join ok");
+                      //}
                 }
             }
         }
@@ -288,6 +194,7 @@ impl PokerClient {
 }
 
 fn main() {
+    
     let a = PokerClient::new();
     a.run();
 }
@@ -328,11 +235,10 @@ fn reader(s: app::Sender<Message>, mut reader: TcpStream, game_info: Arc<Mutex<G
                 }
                 Operation::Leave => {
                     let pos = cmd.para.parse::<usize>().unwrap();
-                    println!("processo addio {}",cmd.para);
+                    println!("processo addio {}", cmd.para);
                     s.send(Message::Leave(pos));
                     // probabilmente nel client non mi serve aggiornare la lista giocatori, mi basta cancellare le info
                     //let mut tgame = game_info.lock().unwrap();
-
                 }
                 _ => (),
             }
