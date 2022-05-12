@@ -1,98 +1,43 @@
-use fltk::{prelude::*, *};
-
-const WAIT_CURSOR: &[&str] = &[
-    "13 18 3 1",
-    "  c None",
-    ". c #FFFFFF",
-    "B c #000000",
-    "  ........   ",
-    "  .BBBBBB.   ",
-    "  .BBBBBB.   ",
-    "  .BBBBBB.   ",
-    "  .BBBBBB.   ",
-    " .B......B.  ",
-    ".B....B...B. ",
-    ".B....B...B. ",
-    ".B....B...BB.",
-    ".B.BBBB...BB.",
-    ".B........B. ",
-    ".B........B. ",
-    " .B......B.  ",
-    "  .BBBBBB.   ",
-    "  .BBBBBB.   ",
-    "  .BBBBBB.   ",
-    "  .BBBBBB.   ",
-    "  ........   ",
-];
-
-pub struct ShapedWindow {
-    wind: window::Window,
-}
-
-impl ShapedWindow {
-    pub fn default() -> Self {
-        let shape = prep_shape();
-
-        let mut wind = window::Window::default().with_size(400, 400);
-        wind.set_color(enums::Color::White);
-        let mut but = button::Button::default()
-            .with_label("Button")
-            .with_size(80, 80)
-            .center_of_parent();
-        but.set_frame(enums::FrameType::OFlatFrame);
-        but.set_color(enums::Color::Cyan);
-        but.clear_visible_focus();
-        wind.end();
-        wind.set_shape(Some(shape));
-        wind.handle({
-            let mut x = 0;
-            let mut y = 0;
-            move |w, ev| match ev {
-                enums::Event::Push => {
-                    let coords = app::event_coords();
-                    x = coords.0;
-                    y = coords.1;
-                    true
-                }
-                enums::Event::Drag => {
-                    w.set_pos(app::event_x_root() - x, app::event_y_root() - y);
-                    true
-                }
-                _ => false,
-            }
-        });
-        Self { wind }
-    }
-    pub fn set_cursor(&mut self, img: image::RgbImage) {
-        self.wind.set_cursor_image(img, 0, 0);
-    }
-    pub fn show(&mut self) {
-        self.wind.show();
-    }
-}
+use fltk::{
+    app::Screen,
+    draw::{Coordinates, Rect},
+};
+type Coord = Coordinates<i32>;
 
 fn main() {
-    let app = app::App::default();
-    let mut win = ShapedWindow::default();
-    win.show();
-    // Called after showing the window
-    win.set_cursor(prep_cursor());
-    app.run().unwrap();
-}
+    let screens = Screen::all_screens();
+    println!("Number of detected screens = {}\n", screens.len());
+    assert_eq![screens.len(), Screen::count() as usize];
 
-fn prep_shape() -> image::RgbImage {
-    let surf = surface::ImageSurface::new(400, 400, false);
-    surface::ImageSurface::push_current(&surf);
-    draw::set_draw_color(enums::Color::Black);
-    draw::draw_rectf(-1, -1, 402, 402);
-    draw::set_draw_color(enums::Color::White);
-    draw::draw_pie(0, 0, 400, 400, 0., 360.);
-    let img = surf.image().unwrap();
-    surface::ImageSurface::pop_current();
-    img
-}
+    println!("Is scaling supported:");
+    println!("- at all = {}", Screen::scaling_supported());
+    println!("- separately = {}", Screen::scaling_supported_separately());
 
-fn prep_cursor() -> image::RgbImage {
-    let cursor = image::Pixmap::new(WAIT_CURSOR).unwrap();
-    image::RgbImage::from_pixmap(&cursor)
+    let coord: Coord = [100, 100].into();
+    let rect: Rect = [100, 100, 100, 100].into();
+
+    // uncomment these lines to see out-of-boundaries errors:
+    // let coord: Coord = [-100, 10_000].into();
+    // let rect: Rect = [-100, 100, 10_000, 10_000].into();
+
+    println!("\nScreen found:");
+    println!("- at {coord:?} = {:?}", Screen::new_at(coord));
+    println!("- inside {rect:?} = {:?}", Screen::new_inside(rect));
+
+    println!("\nWork area:");
+    println!("- at {coord:?} = {:?}", Screen::work_area_at(coord));
+    println!("- under the mouse = {:?}", Screen::work_area_mouse());
+
+    println!("\nXYWH:");
+    println!("- at {coord:?} = {:?}", Screen::xywh_at(coord));
+    println!("- inside {rect:?} = {:?}", Screen::xywh_inside(rect));
+    println!("- under the mouse = {:?}", Screen::xywh_mouse());
+
+    println!("\nFor each screen:");
+    for s in screens {
+        println!("+ {s:?}");
+        println!("  - work area = {:?}:", s.work_area());
+        println!("  - dpi = {:?}", s.dpi());
+        println!("  - scale = {:?}", s.scale());
+    }
 }
