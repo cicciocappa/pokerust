@@ -1,6 +1,7 @@
 use super::{State,PokerClient,Message};
 use fltk::{
-    app,
+    
+    app::{self,Screen},
     button::Button,
     enums::{Color, FrameType},
     frame::Frame,
@@ -13,6 +14,7 @@ use fltk::{
 };
 
 pub fn setup() -> PokerClient {
+    let wa = Screen::all_screens()[0].set_scale(1.0);
     const POSIZIONI: [(i32, i32); 8] = [
         (570+16, 710+16),
         (1000+16, 700+16),
