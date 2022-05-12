@@ -29,6 +29,9 @@ enum Message {
     Leave(usize),
     GotList,
     NewPlayer,
+    Fold,
+    Call,
+    Raise,
 }
 
 enum State {
@@ -77,6 +80,15 @@ impl PokerClient {
         while self.app.wait() {
             if let Some(msg) = self.receiver.recv() {
                 match msg {
+                    Message::Fold => {
+                        println!("fold");
+                    }
+                    Message::Call => {
+                        println!("call");
+                    }
+                    Message::Raise => {
+                        println!("raise");
+                    }
                     Message::GotList => {
                         let game_info = game_info.lock().unwrap();
                         println!("got players list lunga {}", game_info.players.len());

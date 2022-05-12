@@ -63,6 +63,22 @@ pub fn setup() -> PokerClient {
     let mut txt = text::TextDisplay::default().with_size(280, 512).with_pos(1304,80);
     let mut buf = text::TextBuffer::default();
     txt.set_buffer(buf.clone());
+    txt.set_color(Color::by_index(38));
+    txt.set_frame(FrameType::ThinDownBox);
+    txt.set_text_color(Color::Yellow);
+
+    let mut fold_btn = Button::default().with_label("Fold").with_size(280,32).with_pos(1304,600);
+    let mut call_btn = Button::default().with_label("Call").with_size(280,32).with_pos(1304,640);
+    let mut raise_btn = Button::default().with_label("Raise").with_size(280,32).with_pos(1304,680);
+    fold_btn.deactivate();
+    call_btn.deactivate();
+    raise_btn.deactivate();
+    fold_btn.emit(s,Message::Fold);
+    call_btn.emit(s,Message::Call);
+    raise_btn.emit(s,Message::Raise);
+
+
+    
 
     main_win.end();
     main_win.show();
